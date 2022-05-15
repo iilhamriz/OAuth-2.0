@@ -50,6 +50,9 @@ const authCtrl = {
 
             res.json({
                 msg: 'Register Success!',
+                
+                // access token dikirim ke frontend disimpan di global state untuk mengakses halaman tersebut
+                // jika halaman di refresh maka refresh token akan generate access token yang baru
                 access_token,
                 user: {
                     ...newUser._doc,
@@ -91,6 +94,9 @@ const authCtrl = {
 
             res.json({
                 msg: 'Login Success!',
+                
+                 // access token dikirim ke frontend disimpan di global state untuk mengakses halaman tersebut
+                // jika halaman di refresh maka refresh token akan generate access token yang baru
                 access_token,
                 user: {
                     ...user._doc,
