@@ -5,18 +5,25 @@ const jwt = require('jsonwebtoken')
 const authCtrl = {
     register: async (req, res) => {
         try {
+            // Mengambil data dari req.body
             const { fullname, username, email, password, gender } = req.body
+            
+            // memastikan agar semua input yang kita masukka berupa huruf kecil dan tidak ada spasi
             let newUserName = username.toLowerCase().replace(/ /g, '')
 
+            // melakukan pengecekan apakah nama user sudah terdaftar
             const user_name = await Users.findOne({username: newUserName})
             if(user_name) return res.status(400).json({msg: "This user name already exists."})
 
+            // melakukan pengecekan apakah email user sudah terdaftar
             const user_email = await Users.findOne({email})
             if(user_email) return res.status(400).json({msg: "This email already exists."})
 
+            // validasi password harus lebih dari 6 karakter
             if(password.length < 6)
             return res.status(400).json({msg: "Password must be at least 6 characters."})
 
+            // melakukan hashing password
             const passwordHash = await bcrypt.hash(password, 12)
 
             const newUser = new Users({
@@ -24,12 +31,18 @@ const authCtrl = {
             })
 
 
+            // membuat acces token
             const access_token = createAccessToken({id: newUser._id})
+            
+            // membuat refresh token
             const refresh_token = createRefreshToken({id: newUser._id})
 
+            // menyimpan refresh token kedalam cookie untuk generate acces token dan
+            // acces token dapat digunakan agar user yang sudah login tidak perlu login lagi walaupun browser sudah diclose
             res.cookie('refreshtoken', refresh_token, {
                 httpOnly: true,
                 path: '/api/refresh_token',
+                // umur cookie
                 maxAge: 30*24*60*60*1000 // 30days
             })
 
@@ -49,19 +62,27 @@ const authCtrl = {
     },
     login: async (req, res) => {
         try {
+            // Mengambil data dari req.body
             const { email, password } = req.body
 
+            // mencari user dengan email 
             const user = await Users.findOne({email})
             .populate("followers following", "avatar username fullname followers following")
 
             if(!user) return res.status(400).json({msg: "This email does not exist."})
 
+            // melakukan decrypt password dan compare
             const isMatch = await bcrypt.compare(password, user.password)
             if(!isMatch) return res.status(400).json({msg: "Password is incorrect."})
 
+            // membuat access token
             const access_token = createAccessToken({id: user._id})
+            
+            // membuat refresh token
             const refresh_token = createRefreshToken({id: user._id})
 
+            // menyimpan refresh token kedalam cookie untuk generate acces token dan
+            // acces token dapat digunakan agar user yang sudah login tidak perlu login lagi walaupun browser sudah diclose
             res.cookie('refreshtoken', refresh_token, {
                 httpOnly: true,
                 path: '/api/refresh_token',
@@ -88,6 +109,8 @@ const authCtrl = {
             return res.status(500).json({msg: err.message})
         }
     },
+    
+    // melakukan generate acces token dari refresh token
     generateAccessToken: async (req, res) => {
         try {
             const rf_token = req.cookies.refreshtoken
@@ -115,11 +138,12 @@ const authCtrl = {
     }
 }
 
-
+// fungsi membuat access token
 const createAccessToken = (payload) => {
     return jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1d'})
 }
 
+// fungsi membuat refresh token
 const createRefreshToken = (payload) => {
     return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {expiresIn: '30d'})
 }
